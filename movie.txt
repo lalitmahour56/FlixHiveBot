@@ -1,0 +1,55 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext, Filters
+import requests
+
+# Telegram Bot Token
+token = "YOUR_TELEGRAM_BOT_TOKEN"
+
+# OMDb API Key
+OMDB_API_KEY = "YOUR_OMDB_API_KEY"
+
+# Function to search movie
+def search_movie(movie_name):
+    url = f"http://www.omdbapi.com/?t={movie_name}&apikey={OMDB_API_KEY}"
+    response = requests.get(url).json()
+    
+    if response["Response"] == "True":
+        title = response["Title"]
+        year = response["Year"]
+        poster = response.get("Poster", "")
+        download_link = f"https://example.com/download/{title.replace(' ', '_')}"
+        
+        return title, year, poster, download_link
+    else:
+        return None
+
+# Start command
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("Welcome to Movie Search Bot! Send a movie name to search.")
+
+# Handle messages
+def handle_message(update: Update, context: CallbackContext):
+    movie_name = update.message.text
+    result = search_movie(movie_name)
+    
+    if result:
+        title, year, poster, download_link = result
+        keyboard = [[InlineKeyboardButton("Download", url=download_link)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.message.reply_photo(photo=poster, caption=f"🎬 {title} ({year})", reply_markup=reply_markup)
+    else:
+        update.message.reply_text("Sorry, movie not found!")
+
+# Main function
+def main():
+    updater = Updater(token, use_context=True)
+    dp = updater.dispatcher
+    
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == "__main__":
+    main()
